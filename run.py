@@ -1,6 +1,7 @@
 import os, boto3
 from pydub import AudioSegment
 from pydub.playback import play
+from picamera import PiCamera
 from time import sleep
 import glob
 import re
@@ -19,7 +20,7 @@ def speak(text, format='mp3', voice='Conchita'):
     os.remove('sound.mp3')
 
 def uploadAll():
-    people = glob.glob('know_people/*.jpg')
+    people = glob.glob('know_people/*.png')
     people_in_capture=[]
 
     try:
@@ -35,11 +36,16 @@ def uploadAll():
 
 
     for person in people:
-        person_name = re.search('know_people/(.+?).jpg', person)[1]
+        person_name = re.search('know_people/(.+?).png', person).groups()
+        if not person_name:
+            continue
+        person_name = person_name[0]
         file = open(person, 'rb')
 
-        # object = s3.Object('keylab', "face_recognition/"+person)
-        # ret = object.put(Body=file,Metadata={'FullName': person_name})
+        print("Uploading "+str(person_name)+ "face_recognition/"+person)
+        
+        object = s3.Object('keylab', "face_recognition/"+person)
+        ret = object.put(Body=file,Metadata={'FullName': person_name})
 
         response = rekognition.index_faces(CollectionId="keynos", Image={
             'S3Object': {
@@ -55,11 +61,16 @@ def detectFaceFromImage():
       f = imageFile.read()
       b = bytearray(f)
 
-    recognized = rekognition.search_faces_by_image(
-		Image={
-			"Bytes": b
-        },CollectionId="keynos"
-    )
+    try:
+        recognized = rekognition.search_faces_by_image(
+            Image={
+                "Bytes": b
+            },CollectionId="keynos",
+            MaxFaces=123
+        )
+    except:
+        return []
+    print(recognized)
 
     detected_faces = []
 
@@ -77,10 +88,22 @@ def list_faces():
 s3 = session.resource("s3")
 polly = session.client("polly")
 rekognition = session.client("rekognition")
+camera = PiCamera()
 
-# list_faces()
 
-uploadAll()
-detected_faces = detectFaceFromImage()
-for face in detected_faces:
-    speak("He detectado a "+face)
+#list_faces()
+
+#uploadAll()
+
+
+while(True):
+    print("Taking photo")
+    camera.capture('capture.jpg', resize=(600, 400))
+    print("Taked!")
+
+    detected_faces = detectFaceFromImage()
+    print(detected_faces)
+    for face in detected_faces:
+        speak("Hola "+face)
+    print("Waiting 2 secs...")
+    sleep(2)
