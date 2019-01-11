@@ -42,7 +42,7 @@ def uploadAll():
         person_name = person_name[0]
         file = open(person, 'rb')
 
-        print("Uploading "+str(person_name)+ "face_recognition/"+person)
+        print("Uploading "+str(person_name)+ ": face_recognition/"+person)
         
         object = s3.Object('keylab', "face_recognition/"+person)
         ret = object.put(Body=file,Metadata={'FullName': person_name})
@@ -85,6 +85,19 @@ def list_faces():
     )
     print(response)
 
+def routine():
+    while(True):
+        print("Taking photo")
+        camera.capture('capture.jpg', resize=(600, 400))
+        print("Taked!")
+
+        detected_faces = detectFaceFromImage()
+        print(detected_faces)
+        for face in detected_faces:
+            speak("Hola "+face)
+        print("Waiting 2 secs...")
+        sleep(2)
+
 s3 = session.resource("s3")
 polly = session.client("polly")
 rekognition = session.client("rekognition")
@@ -95,15 +108,5 @@ camera = PiCamera()
 
 #uploadAll()
 
+routine()
 
-while(True):
-    print("Taking photo")
-    camera.capture('capture.jpg', resize=(600, 400))
-    print("Taked!")
-
-    detected_faces = detectFaceFromImage()
-    print(detected_faces)
-    for face in detected_faces:
-        speak("Hola "+face)
-    print("Waiting 2 secs...")
-    sleep(2)
